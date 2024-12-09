@@ -10,7 +10,6 @@
     "cdk": "cdk",
     "schema": "typescript-json-schema --noExtraProps --required --refs false -o ./shared/types.schema.json  \"./shared/types.d.ts\" \"*\""
   },
-
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "22.7.4",
