@@ -49,6 +49,10 @@ export class RestAPIStack extends cdk.Stack {
       tableName: "MovieCrew",
     });
 
+    movieCrewTable.addLocalSecondaryIndex({
+      indexName: "nameIx",
+      sortKey: { name: "crewName", type: dynamodb.AttributeType.STRING },
+    });
     // Functions
     const getMovieByIdFn = new lambdanode.NodejsFunction(
       this,
@@ -67,17 +71,17 @@ export class RestAPIStack extends cdk.Stack {
       }
     );
 
-    const getMovieCastMembersFn = new lambdanode.NodejsFunction(
+    const getMovieCrewMemberFn = new lambdanode.NodejsFunction(
       this,
-      "GetCastMemberFn",
+      "GetMovieCrewMemberFn",
       {
         architecture: lambda.Architecture.ARM_64,
         runtime: lambda.Runtime.NODEJS_18_X,
-        entry: `${__dirname}/../lambdas/getMovieCastMember.ts`,
+        entry: `${__dirname}/../lambdas/getMovieCrewMember.ts`,
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
         environment: {
-          TABLE_NAME: movieCastsTable.tableName,
+          TABLE_NAME: movieCrewTable.tableName,
           REGION: "eu-west-1",
         },
       }
@@ -138,30 +142,27 @@ export class RestAPIStack extends cdk.Stack {
       },
     });
 
-    const moviesEndpoint = api.root.addResource("movies");
+    
+    const crewsEndpoint = api.root.addResource("crew");
+    
+    const crewEndpoint = crewsEndpoint.addResource("{role}");
+    
+    const moviesEndpoint = crewEndpoint.addResource("movies");
 
     const movieEndpoint = moviesEndpoint.addResource("{movieId}");
-
+    
     movieEndpoint.addMethod(
       "GET",
-      new apig.LambdaIntegration(getMovieByIdFn, { proxy: true })
+      new apig.LambdaIntegration(getMovieCrewMemberFn, { proxy: true })
     );
 
-    const movieCastEndpoint = movieEndpoint.addResource("cast");
-    movieCastEndpoint.addMethod(
-      "GET",
-      new apig.LambdaIntegration(getMovieCastMembersFn, { proxy: true })
-    );
 
-    movieEndpoint.addMethod(
-      "DELETE",
-      new apig.LambdaIntegration(deleteMovieByIdFn, { proxy: true })
-    );
+
 
     // Permissions;
     moviesTable.grantReadData(getMovieByIdFn);
     moviesTable.grantReadWriteData(deleteMovieByIdFn);
-    movieCastsTable.grantReadData(getMovieCastMembersFn);
-    movieCastsTable.grantReadData(getMovieByIdFn);
+    movieCrewTable.grantReadData(getMovieCrewMemberFn);
+    movieCrewTable.grantReadData(getMovieByIdFn);
   }
 }

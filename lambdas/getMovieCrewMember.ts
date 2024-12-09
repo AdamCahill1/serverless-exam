@@ -1,5 +1,5 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { MovieCastMemberQueryParams } from "../shared/types";
+import { MovieCrewRole } from "../shared/types";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -11,7 +11,7 @@ import schema from "../shared/types.schema.json";
 
 const ajv = new Ajv();
 const isValidQueryParams = ajv.compile(
-  schema.definitions["MovieCastMemberQueryParams"] || {}
+  schema.definitions["MovieCrewRole"] || {}
 );
 
 const ddbDocClient = createDocumentClient();
@@ -20,9 +20,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
   try {
     console.log("Event: ", event);
     const parameters = event?.pathParameters;
-    const movieId = parameters?.movieId
-      ? parseInt(parameters.movieId)
-      : undefined;
+    const role = parameters?.role;
+    const movieId = parameters?.movieId? parseInt(parameters.movieId) : undefined;
+    // if (!role) {
+    //   return {
+    //     statusCode: 404,
+    //     headers: {
+    //       "content-type": "application/json",
+    //     },
+    //     body: JSON.stringify({ parameters }),
+    //   };
+    // }
     if (!movieId) {
       return {
         statusCode: 404,
@@ -32,6 +40,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         body: JSON.stringify({ Message: "Missing movie Id" }),
       };
     }
+
     const queryParams = event.queryStringParameters;
     if (queryParams && !isValidQueryParams(queryParams)) {
       return {
@@ -41,7 +50,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         },
         body: JSON.stringify({
           message: `Incorrect type. Must match Query parameters schema`,
-          schema: schema.definitions["MovieCastMemberQueryParams"],
+          schema: schema.definitions["MovieCrewRole"],
         }),
       };
     }
@@ -49,33 +58,24 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
       TableName: process.env.TABLE_NAME,
     };
     if (queryParams) {
-      if ("roleName" in queryParams) {
-        commandInput = {
-          ...commandInput,
-          IndexName: "roleIx",
-          KeyConditionExpression: "movieId = :m and begins_with(roleName, :r) ",
-          ExpressionAttributeValues: {
-            ":m": movieId,
-            ":r": queryParams.roleName,
-          },
-        };
-      } else if ("actorName" in queryParams) {
+       if ("name" in queryParams) {
         commandInput = {
           ...commandInput,
           KeyConditionExpression:
-            "movieId = :m and begins_with(actorName, :a) ",
+            "movieId = :m and begins_with(crewName, :c) ",
           ExpressionAttributeValues: {
             ":m": movieId,
-            ":a": queryParams.actorName,
+            ":c": queryParams.name,
           },
         };
       }
     } else {
       commandInput = {
         ...commandInput,
-        KeyConditionExpression: "movieId = :m",
+        KeyConditionExpression: "movieId = :m and begins_with(crewRole, :c) ",
         ExpressionAttributeValues: {
           ":m": movieId,
+          ":c": role,
         },
       };
     }
