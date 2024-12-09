@@ -22,15 +22,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     const parameters = event?.pathParameters;
     const role = parameters?.role;
     const movieId = parameters?.movieId? parseInt(parameters.movieId) : undefined;
-    // if (!role) {
-    //   return {
-    //     statusCode: 404,
-    //     headers: {
-    //       "content-type": "application/json",
-    //     },
-    //     body: JSON.stringify({ parameters }),
-    //   };
-    // }
+    if (!role) {
+      return {
+        statusCode: 404,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ parameters }),
+      };
+    }
     if (!movieId) {
       return {
         statusCode: 404,
@@ -62,7 +62,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         commandInput = {
           ...commandInput,
           KeyConditionExpression:
-            "movieId = :m and begins_with(crewName, :c) ",
+            "movieId = :m and begins_with(names, :c) ",
           ExpressionAttributeValues: {
             ":m": movieId,
             ":c": queryParams.name,
